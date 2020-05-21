@@ -16,13 +16,27 @@ class HashTable:
 
     Implement this.
     """
+    def __init__(self, capacity = 32):
+        self.capacity = capacity
+        self.size = 0
+        self.storage = [None] * self.capacity
 
-    def fnv1(self, key):
+    def fnv1a(self, key, seed = 0):
         """
         FNV-1 64-bit hash function
 
         Implement this, and/or DJB2.
         """
+        FNV_prime = 1099511628211
+        offset_basis = 14695981039346656037
+
+        #FNV-1a Hash Function
+        hash = offset_basis + seed
+        for char in key:
+            hash = hash ^ ord(char)
+            hash = hash * FNV_prime
+        return hash
+
 
     def djb2(self, key):
         """
@@ -30,14 +44,18 @@ class HashTable:
 
         Implement this, and/or FNV-1.
         """
+        hash = 5381
+        for x in key:
+            hash = (( hash << 5) + hash) + ord(x)
+        return hash & 0xFFFFFFFF
 
     def hash_index(self, key):
         """
         Take an arbitrary key and return a valid integer index
         between within the storage capacity of the hash table.
         """
-        #return self.fnv1(key) % self.capacity
-        return self.djb2(key) % self.capacity
+        return self.fnv1a(key) % self.capacity
+        # return self.djb2(key) % self.capacity
 
     def put(self, key, value):
         """
@@ -47,6 +65,25 @@ class HashTable:
 
         Implement this.
         """
+        #increment size of hash table
+        self.size += 1
+        
+        #compute index using hash function
+        hash_index = self.hash_index(key)
+
+        #if bucket at index is empty, create new node and insert
+        node = self.storage[hash_index]
+        if node is None:
+            self.storage[hash_index] = HashTableEntry(key, value)
+            return
+
+        #if not empty, collision occured
+        #iterate to end of list and add new node at end
+        prev = node
+        while node is not None:
+            prev = node
+            node = node.next
+        prev.next = HashTableEntry(key, value)
 
     def delete(self, key):
         """
@@ -56,6 +93,27 @@ class HashTable:
 
         Implement this.
         """
+        #compute hash
+        #iterate linked listed of nodes, continue until found or end
+        #if key is not found, return none
+        #else remove node from linked list
+        index = self.hash_index(key)
+        node = self.storage[index]
+        prev = node
+        if node.key == key:
+            self.storage[index] = node.next
+            return
+
+        while node is not None and node.key != key:
+            prev = node
+            node = node.next
+        if node is None:
+            print(f'{key} not found')
+            return None
+        else:
+            self.size -= 1
+            prev.next = node.next
+            
 
     def get(self, key):
         """
@@ -65,6 +123,21 @@ class HashTable:
 
         Implement this.
         """
+        #compute index
+        index = self.hash_index(key)
+
+        #go to bucket at index
+        node = self.storage[index]
+        
+        #iterate the nodes in linked list until key or end is found
+        while node is not None and node.key != key:
+            node = node.next
+        
+        #return the value if found, or none if not found
+        if node is None:
+            return None
+        else:
+            return node.value
 
     def resize(self):
         """
@@ -73,6 +146,20 @@ class HashTable:
 
         Implement this.
         """
+        #create new table double size
+        self.capacity *= 2
+        new_table = [None] * (self.capacity)
+
+        #iterate through current list
+        for index in range(len(self.storage)):
+            node = self.storage[index]
+            #if there is a linked list, iterate through and rehash
+            while node is not None:
+                new_hash_index = self.hash_index(node.key)
+                new_table[new_hash_index] = node
+                node = node.next
+        
+        self.storage = new_table
 
 if __name__ == "__main__":
     ht = HashTable(2)
